@@ -1,196 +1,379 @@
 #include<iostream>
 #include<fstream>
-#include<queue>
 
 std::ifstream fin("input.txt");
 std::ofstream fout("output.txt");
 
-char** readMatrix(int n)
+struct Pos
 {
-	char** matrix = new char* [n];
+	int x;
+	int y;
+	Pos() : x(0), y(0) {}
+	Pos(const int x, const int y) : x(x), y(y) {}
+};
 
-	for (int i = 0; i < n; ++i)
+template <class T>
+
+struct Node
+{
+	T data;
+	Node* next;
+
+	Node() : data(T()), next(nullptr) {}
+	Node(T data) : data(data), next(nullptr) {}
+	~Node() { data = T(); next = nullptr; }
+};
+
+template <class T>
+
+class queue
+{
+public:
+	queue() : head(nullptr), tail(nullptr) {}
+	~queue() { dispose(); }
+
+	bool empty() { return head == nullptr; }
+	void push(T data)
 	{
-		matrix[i] = new char[n];
-		for (int j = 0; j < n; ++j)
+		Node<T>* node = new Node<T>(data);
+		if (empty())
 		{
-			fin >> matrix[i][j];
+			head = node;
+			tail = node;
+		}
+		else
+		{
+			tail->next = node;
+			tail = node;
 		}
 	}
-	return matrix;
-}
-int** createDisM(int n)
-{
-	int** matrix = new int* [n];
-
-	for (int i = 0; i < n; ++i)
+	void pop()
 	{
-		matrix[i] = new int[n];
-		for (int j = 0; j < n; ++j)
+		if (empty())
 		{
-			matrix[i][j] = 65000;
+			return;
+		}
+		Node<T>* dump = head;
+		head = head->next;
+		delete dump;
+		return;
+	}
+	T front()
+	{
+		if (empty())
+		{
+			T null = T();
+			return null;
+		}
+		else
+		{
+			return head->data;
 		}
 	}
-	return matrix;
-}
 
-void SF_cord(int& xs, int& ys, int& xf, int& yf, int n, char** matrix)
-{
-	for (int i = 0; i < n; ++i)
+private:
+	void dispose()
 	{
-		for (int j = 0; j < n; ++j)
+		while (!empty())
 		{
-			if (matrix[i][j] == '@')
+			pop();
+		}
+	}
+	Node<T>* head;
+	Node<T>* tail;
+
+};
+
+class CGraph {
+public:
+	CGraph()
+		: _N(0), _M(0), _disCount(0), _matrix(nullptr), _disM(nullptr) {}
+	CGraph(int N, int M, const int disCount)
+		: _N(N), _M(M), _disCount(disCount), _matrix(nullptr), _disM(nullptr)
+	{
+		init();
+	}
+	~CGraph()
+	{
+		dispose();
+	}
+	void fReadGraph(char borders = '#')
+	{
+		if (!fin.is_open())
+		{
+			return;
+		}
+		init();
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			for (int j = 0; j < _M + 2; ++j)
 			{
-				xs = i;
-				ys = j;
+				if (i != 0 && j != 0 && i != _N + 1 && j != _M + 1)
+				{
+					fin >> _matrix[i][j];
+				}
+				else
+				{
+					_matrix[i][j] = borders;
+				}
 			}
-			if (matrix[i][j] == 'X')
+		}
+	}
+	void CreateGraph(char free_cells = '.', char borders = '#')
+	{
+		init();
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			for (int j = 0; j < _M + 2; ++j)
 			{
-				xf = i;
-				yf = j;
+				if (i != 0 && j != 0 && i != _N + 1 && j != _M + 1)
+				{
+					_matrix[i][j] = free_cells;
+				}
+				else
+				{
+					_matrix[i][j] = borders;
+				}
 			}
 		}
 	}
-}
-
-bool My_BFS(int n, int** disM, char** matrix)
-{
-	int xs = 0;
-	int ys = 0;
-	int xf = 0;
-	int yf = 0;
-	SF_cord(xs, ys, xf, yf, n, matrix);
-
-	disM[xs][ys] = 0;
-
-	std::queue<int> q;
-	q.push(xs);
-	q.push(ys);
-	while (!q.empty())
+	void cleanDisM()
 	{
-		int xn = q.front();
-		q.pop();
-		int yn = q.front();
-		q.pop();
+		initDisM();
+	}
 
-		if (xn - 1 == xf && yn == yf)
-		{
-			disM[xf][yf] = disM[xn][yn] + 1;
-			return true;
-		}
-		if (xn + 1 == xf && yn == yf)
-		{
-			disM[xf][yf] = disM[xn][yn] + 1;
-			return true;
-		}
-		if (xn == xf && yn - 1 == yf)
-		{
-			disM[xf][yf] = disM[xn][yn] + 1;
-			return true;
-		}
-		if (xn == xf && yn + 1 == yf)
-		{
-			disM[xf][yf] = disM[xn][yn] + 1;
-			return true;
-		}
+	char** _matrix;
+	int*** _disM;
+	int _N; //количество строк
+	int _M; //количество столбцов
+	const int _disCount;
 
-		if (xn - 1 >= 0 && matrix[xn - 1][yn] == '.' && disM[xn - 1][yn] == 65000)
+private:
+	void init()
+	{
+		dispose();
+		initMatrix();
+		initDisM();
+	}
+	void initMatrix() {
+		if (_N == 0 && _M == 0)
 		{
-			q.push(xn - 1);
-			q.push(yn);
-			disM[xn - 1][yn] = disM[xn][yn] + 1;
+			return;
 		}
-		if (xn + 1 < n && matrix[xn + 1][yn] == '.' && disM[xn + 1][yn] == 65000)
+		_matrix = new char* [_N + 2];
+		for (int i = 0; i < _N + 2; ++i)
 		{
-			q.push(xn + 1);
-			q.push(yn);
-			disM[xn + 1][yn] = disM[xn][yn] + 1;
-		}
-		if (yn - 1 >= 0 && matrix[xn][yn - 1] == '.' && disM[xn][yn - 1] == 65000)
-		{
-			q.push(xn);
-			q.push(yn - 1);
-			disM[xn][yn - 1] = disM[xn][yn] + 1;
-		}
-		if (yn + 1 < n && matrix[xn][yn + 1] == '.' && disM[xn][yn + 1] == 65000)
-		{
-			q.push(xn);
-			q.push(yn + 1);
-			disM[xn][yn + 1] = disM[xn][yn] + 1;
+			_matrix[i] = new char[_M + 2];
 		}
 	}
-	return false;
-}
-
-
-void nazad(int n, int** disM, char** matrix)
-{
-	int xs = 0;
-	int ys = 0;
-	int xf = 0;
-	int yf = 0;
-	SF_cord(xs, ys, xf, yf, n, matrix);
-
-	int xn = xf;
-	int yn = yf;
-	int dis = disM[xf][yf];
-	while (dis > 0)
+	void initDisM()
 	{
-		matrix[xn][yn] = '+';
-
-		if (xn - 1 >= 0 && disM[xn - 1][yn] == dis - 1)
+		if (_matrix == nullptr)
 		{
-			--dis;
-			--xn;
-			continue;
+			return;
 		}
-		if (xn + 1 < n && disM[xn + 1][yn] == dis - 1)
+		_disM = new int** [_N + 2];
+		for (int i = 0; i < _N + 2; ++i)
 		{
-			--dis;
-			++xn;
-			continue;
-		}
-		if (yn - 1 >= 0 && disM[xn][yn - 1] == dis - 1)
-		{
-			--dis;
-			--yn;
-			continue;
-		}
-		if (yn + 1 < n && disM[xn][yn + 1] == dis - 1)
-		{
-			--dis;
-			++yn;
-			continue;
+			_disM[i] = new int* [_M + 2];
+			for (int j = 0; j < _M + 2; ++j)
+			{
+				_disM[i][j] = new int[_disCount];
+				for (int k = 0; k < _disCount; ++k)
+					_disM[i][j][k] = -1;
+			}
 		}
 	}
-}
-
-void printMatrix(int n, char** matrix)
-{
-	for (int i = 0; i < n; ++i)
+	void dispose()
 	{
-		for (int j = 0; j < n; ++j)
+		if (_matrix != nullptr)
 		{
-			fout << matrix[i][j];
+			for (int i = 0; i < _N + 2; ++i)
+			{
+				delete[] _matrix[i];
+			}
+			delete[] _matrix;
+			_matrix = nullptr;
 		}
-		fout << std::endl;
+		if (_disM != nullptr)
+		{
+			for (int i = 0; i < _N + 2; ++i)
+			{
+				for (int j = 0; j < _M + 2; ++j)
+				{
+					delete _disM[i][j];
+				}
+				delete[] _disM[i];
+			}
+			delete[] _disM;
+			_disM = nullptr;
+		}
 	}
-}
+};
+
+class MyBFS : public CGraph {
+public:
+	MyBFS()
+		: CGraph(), q() {}
+	MyBFS(int N, int M, const int DisCount)
+		: CGraph(N, M, DisCount), q() {}
+	bool haslen()
+	{
+		Pos start = getcoord('@');
+		int ans = BFS(start);
+		if (ans == -1)
+		{
+			return false;
+		}
+		return true;
+	}
+	void printMatrix()
+	{
+		nazad();
+		for (int i = 1; i < _N + 1; ++i)
+		{
+			for (int j = 1; j < _M + 1; ++j)
+			{
+				fout << _matrix[i][j];
+			}
+			fout << std::endl;
+		}
+	}
+	
+
+
+private:
+	int BFS(Pos start)
+	{
+		q.push(start);
+		_disM[start.x][start.y][0] = 0;
+
+		while (!q.empty())
+		{
+			Pos cur = q.front();
+			q.pop();
+			if (_matrix[cur.x][cur.y] == 'X')
+			{
+				while (!q.empty())
+				{
+					q.pop();
+				}
+				return _disM[cur.x][cur.y][0];
+			}
+			step1(cur);//x+1
+			step2(cur);//x-1
+			step3(cur);//y+1
+			step4(cur);//y-1
+		}
+		return -1;
+	}
+	Pos getcoord(const char c)
+	{
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			for (int j = 0; j < _M + 2; ++j)
+			{
+				if (_matrix[i][j] == c)
+				{
+					return Pos(i, j);
+				}
+			}
+		}
+		return Pos();
+	}
+	void step1(Pos cur)
+	{
+		Pos tmp = Pos(cur.x + 1, cur.y);
+		if (step(tmp))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
+	}
+	void step2(Pos cur)
+	{
+		Pos tmp = Pos(cur.x - 1, cur.y);
+		if (step(tmp))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
+	}
+	void step3(Pos cur)
+	{
+		Pos tmp = Pos(cur.x, cur.y + 1);
+		if (step(tmp))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
+	}
+	void step4(Pos cur)
+	{
+		Pos tmp = Pos(cur.x, cur.y - 1);
+		if (step(tmp))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
+	}
+	bool step(Pos newpos)
+	{
+		if (_matrix[newpos.x][newpos.y] != 'O' && _disM[newpos.x][newpos.y][0] == -1)
+		{
+			return true;
+		}
+		return false;
+	}
+	void nazad()
+	{
+		Pos f = getcoord('X');
+		int dis = _disM[f.x][f.y][0];
+		while (dis > 0)
+		{
+			_matrix[f.x][f.y] = '+';
+
+			if (_disM[f.x - 1][f.y][0] == dis - 1)
+			{
+				--dis;
+				--f.x;
+				continue;
+			}
+			if (_disM[f.x + 1][f.y][0] == dis - 1)
+			{
+				--dis;
+				++f.x;
+				continue;
+			}
+			if (_disM[f.x][f.y - 1][0] == dis - 1)
+			{
+				--dis;
+				--f.y;
+				continue;
+			}
+			if (_disM[f.x][f.y + 1][0] == dis - 1)
+			{
+				--dis;
+				++f.y;
+				continue;
+			}
+		}
+	}
+	queue<Pos> q;
+};
 
 int main(int argc, char* argv[])
 {
 	int  n = 0;
 	fin >> n;
 
-	char** matrix = readMatrix(n);
-	int** disM = createDisM(n);
+	MyBFS labyr = MyBFS(n, n, 1);
+	labyr.fReadGraph('O');
 
-	if (My_BFS(n, disM, matrix))
+	if (labyr.haslen())
 	{
 		fout << 'Y' << std::endl;
-		nazad(n, disM, matrix);
-		printMatrix(n, matrix);
+		labyr.printMatrix();
 	}
 	else
 	{
@@ -198,13 +381,5 @@ int main(int argc, char* argv[])
 	}
 	fin.close();
 	fout.close();
-
-	for (int i = 0; i < n; ++i)
-	{
-		delete[] matrix[i];
-		delete[] disM[i];
-	}
-	delete[] matrix;
-	delete[] disM;
 	return EXIT_SUCCESS;
 }

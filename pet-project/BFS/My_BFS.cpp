@@ -8,7 +8,6 @@ struct Pos
 {
 	int x;
 	int y;
-	Pos() : x(0), y(0) {}
 	Pos(const int x, const int y) : x(x), y(y) {}
 };
 
@@ -88,7 +87,7 @@ class CGraph {
 public:
 	CGraph()
 		: _N(0), _M(0), _disCount(), _matrix(nullptr), _disM(nullptr) {}
-	CGraph(int N, int M, const int disCount)
+	CGraph(int N, int M,int disCount)
 		: _N(N), _M(M), _disCount(disCount), _matrix(nullptr), _disM(nullptr)
 	{
 		init();
@@ -119,13 +118,13 @@ public:
 			}
 		}
 	}
-
+	
 
 	char** _matrix;
 	int*** _disM;
 	int _N; //количество строк
 	int _M; //количество столбцов
-	const int _disCount;
+	int _disCount;
 
 private:
 	void init()
@@ -190,95 +189,61 @@ private:
 	}
 };
 
-class MyBFS : public CGraph {
+class MyBFS: CGraph
+{
 public:
-	MyBFS()
-		: CGraph() {}
-	MyBFS(int N, int M, const int DisCount)
-		: CGraph(N, M, DisCount) {}
-	int getStarsCount()
+	int Basic_BFS()
 	{
-		int n = 0;
-		
-		for (int i = 0; i < _N + 2; ++i)
+		Pos start = getstart();
+		if (start.x == -1)
 		{
-			for (int j = 0; j < _M + 2; ++j)
+			return -1;
+		}
+		_q.push(start);
+		while (!_q.empty())
+		{
+			Pos cur = _q.front();
+			_q.pop();
+			stepN();
+			stepW();
+			stepE();
+			stepS();
+
+		}
+		return getfinishdis(char finish);
+	}
+private:
+	Pos getstart()
+	{
+		if (_matrix != nullptr)
+		{
+			for (int i = 0; i < _N + 2; ++i)
 			{
-				if (_matrix[i][j] == '*' && _disM[i][j][0] == -1)
+				for (int j = 0; j < _M + 2; ++j)
 				{
-					BFS_stars(Pos(i, j));
-					++n;
+					if (_matrix[i][j] == _start)
+					{
+						for (int n = 0; n < _disCount; ++n)
+						{
+							_disM[i][j][n] = 0;
+						}
+						return Pos(i, j);
+					}
 				}
 			}
 		}
-		return n;
+		return Pos(-1, -1);
 	}
-
-private:
-	void BFS_stars(Pos start)
+	void stepN(Pos cur)
 	{
-		queue<Pos> q;
-		q.push(start);
-		_disM[start.x][start.y][0] = 0;
+		if()
+	}
+	void stepW();
+	void stepE();
+	void stepS();
 
-		while (!q.empty())
-		{
-			Pos cur = q.front();
-			q.pop();
-			Pos tmp = Pos(cur.x - 1, cur.y);
-			if (step(tmp))
-			{
-				q.push(tmp);
-				_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
-			}
-			tmp = Pos(cur.x + 1, cur.y);
-			if (step(tmp))
-			{
-				q.push(tmp);
-				_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
-			}
-			tmp = Pos(cur.x, cur.y + 1);
-			if (step(tmp))
-			{
-				q.push(tmp);
-				_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
-			}
-			tmp = Pos(cur.x, cur.y - 1);
-			if (step(tmp))
-			{
-				q.push(tmp);
-				_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
-			}
-		}
-	}
-	bool step(Pos newpos)
-	{
-		if (_matrix[newpos.x][newpos.y] == '*' && _disM[newpos.x][newpos.y][0] == -1)
-		{
-			return true;
-		}
-		return false;
-	}
+	char _start;
+	char _finish;
+	queue<Pos> _q;
+
 };
-
-
-
-
-int main(int argc, char* argv[])
-{
-	int x = 0;
-	int y = 0;
-
-	fin >> x;
-	fin >> y;
-
-	MyBFS starfield = MyBFS(x, y, 1);
-	starfield.fReadGraph();
-
-	fout << starfield.getStarsCount() << std::endl;
-
-	fin.close();
-	fout.close();
-
-	return EXIT_SUCCESS;
-}

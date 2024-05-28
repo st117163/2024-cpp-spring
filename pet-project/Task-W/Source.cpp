@@ -1,6 +1,5 @@
 #include<iostream>
 #include<fstream>
-#include<queue>
 
 std::ifstream fin("input.txt");
 std::ofstream fout("output.txt");
@@ -9,112 +8,327 @@ struct Pos
 {
 	int x;
 	int y;
+	Pos() : x(0), y(0) {}
 	Pos(const int x, const int y) : x(x), y(y) {}
 };
 
-void readMatrix(int x, int y, char(&matrix)[1002][1002])
+template <class T>
+
+struct Node
 {
-	for (int i = 0; i < x; ++i)
+	T data;
+	Node* next;
+
+	Node() : data(T()), next(nullptr) {}
+	Node(T data) : data(data), next(nullptr) {}
+	~Node() { data = T(); next = nullptr; }
+};
+
+template <class T>
+
+class queue
+{
+public:
+	queue() : head(nullptr), tail(nullptr) {}
+	~queue() { dispose(); }
+
+	bool empty() { return head == nullptr; }
+	void push(T data)
 	{
-		for (int j = 0; j < y; ++j)
+		Node<T>* node = new Node<T>(data);
+		if (empty())
 		{
-			if (i == 0 || j == 0 || i == x - 1 || j == y - 1)
+			head = node;
+			tail = node;
+		}
+		else
+		{
+			tail->next = node;
+			tail = node;
+		}
+	}
+	void pop()
+	{
+		if (empty())
+		{
+			return;
+		}
+		Node<T>* dump = head;
+		head = head->next;
+		delete dump;
+		return;
+	}
+	T front()
+	{
+		if (empty())
+		{
+			T null = T();
+			return null;
+		}
+		else
+		{
+			return head->data;
+		}
+	}
+
+private:
+	void dispose()
+	{
+		while (!empty())
+		{
+			pop();
+		}
+	}
+	Node<T>* head;
+	Node<T>* tail;
+
+};
+
+class CGraph {
+public:
+	CGraph()
+		: _N(0), _M(0), _disCount(0), _matrix(nullptr), _disM(nullptr) {}
+	CGraph(int N, int M, const int disCount)
+		: _N(N), _M(M), _disCount(disCount), _matrix(nullptr), _disM(nullptr)
+	{
+		init();
+	}
+	~CGraph()
+	{
+		dispose();
+	}
+	void fReadGraph(char borders = '#')
+	{
+		if (!fin.is_open())
+		{
+			return;
+		}
+		init();
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			for (int j = 0; j < _M + 2; ++j)
 			{
-				matrix[i][j] = 'E';
+				if (i != 0 && j != 0 && i != _N + 1 && j != _M + 1)
+				{
+					fin >> _matrix[i][j];
+				}
+				else
+				{
+					_matrix[i][j] = borders;
+				}
 			}
-			else
+		}
+	}
+	void CreateGraph(char free_cells = '.', char borders = '#')
+	{
+		init();
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			for (int j = 0; j < _M + 2; ++j)
 			{
-				fin >> matrix[i][j];
+				if (i != 0 && j != 0 && i != _N + 1 && j != _M + 1)
+				{
+					_matrix[i][j] = free_cells;
+				}
+				else
+				{
+					_matrix[i][j] = borders;
+				}
 			}
 		}
 	}
-}
-
-void getCoords(int& xs, int& ys, char l, char(&matrix)[1002][1002])
-{
-	for (int i = 0; i < 1002; ++i)
+	void cleanDisM()
 	{
-		for (int j = 0; j < 1002; ++j)
+		deleteDisM();
+		initDisM();
+	}
+
+	char** _matrix;
+	int*** _disM;
+	int _N; //количество строк
+	int _M; //количество столбцов
+	const int _disCount;
+
+private:
+	void init()
+	{
+		dispose();
+		initMatrix();
+		initDisM();
+	}
+	void initMatrix() {
+		if (_N == 0 && _M == 0)
 		{
-			if (matrix[i][j] == l)
+			return;
+		}
+		_matrix = new char* [_N + 2];
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			_matrix[i] = new char[_M + 2];
+		}
+	}
+	void initDisM()
+	{
+		if (_matrix == nullptr)
+		{
+			return;
+		}
+		_disM = new int** [_N + 2];
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			_disM[i] = new int* [_M + 2];
+			for (int j = 0; j < _M + 2; ++j)
 			{
-				xs = i;
-				ys = j;
+				_disM[i][j] = new int[_disCount];
+				for (int k = 0; k < _disCount; ++k)
+					_disM[i][j][k] = -1;
 			}
 		}
 	}
-}
-
-bool is_free(char lS, char n)
-{
-	if (lS == 'T')
+	void deleteDisM()
 	{
-		return (n == '.' || n == 'K' || n == 'E');
-	}
-	else
-		return (n != '#');
-}
-
-int My_BFS(int x, int y, char lS, char lF, char(&matrix)[1002][1002])
-{
-	int xs = 0;
-	int ys = 0;
-
-	getCoords(xs, ys, lS, matrix);
-
-	int** dis = new int* [x];
-	for (int i = 0; i < x; ++i)
-	{
-		dis[i] = new int[y];
-		for (int j = 0; j < y; ++j)
+		if (_disM != nullptr)
 		{
-			dis[i][j] = -1;
+			for (int i = 0; i < _N + 2; ++i)
+			{
+				for (int j = 0; j < _M + 2; ++j)
+				{
+					delete _disM[i][j];
+				}
+				delete[] _disM[i];
+			}
+			delete[] _disM;
+			_disM = nullptr;
 		}
 	}
-	dis[xs][ys] = 0;
-
-	std::queue<Pos> q;
-	Pos start = Pos(xs, ys);
-	q.push(start);
-
-	while (!q.empty())
+	void dispose()
 	{
-		Pos pn = q.front();
-		q.pop();
+		if (_matrix != nullptr)
+		{
+			for (int i = 0; i < _N + 2; ++i)
+			{
+				delete[] _matrix[i];
+			}
+			delete[] _matrix;
+			_matrix = nullptr;
+		}
+		deleteDisM();
+	}
+};
 
-		if (matrix[pn.x][pn.y] == lF)
-		{
-			return dis[pn.x][pn.y];
-		}
+class MyBFS : public CGraph {
+public:
+	MyBFS()
+		: CGraph(), q() {}
+	MyBFS(int N, int M, const int DisCount)
+		: CGraph(N, M, DisCount), q() {}
+	int getlen(char st, char end)
+	{
+		int ans = BFS(st, end);
+		cleanDisM();
+		return ans;
+	}
 
-		if (is_free(lS, matrix[pn.x - 1][pn.y]) && dis[pn.x - 1][pn.y] < 0)
+private:
+	int BFS(char st, char end)
+	{
+		Pos start = getcoord(st);
+		q.push(start);
+		_disM[start.x][start.y][0] = 0;
+
+		while (!q.empty())
 		{
-			dis[pn.x - 1][pn.y] = dis[pn.x][pn.y] + 1;
-			q.push(Pos(pn.x - 1, pn.y));
+			Pos cur = q.front();
+			q.pop();
+			if (_matrix[cur.x][cur.y] == end)
+			{
+				while (!q.empty())
+				{
+					q.pop();
+				}
+				return _disM[cur.x][cur.y][0];
+			}
+			step1(cur, st);//x+1
+			step2(cur, st);//x-1
+			step3(cur, st);//y+1
+			step4(cur, st);//y-1
 		}
-		if (is_free(lS, matrix[pn.x + 1][pn.y]) && dis[pn.x + 1][pn.y] < 0)
+		return -1;
+	}
+
+	void step1(Pos cur, char st)
+	{
+		Pos tmp = Pos(cur.x + 1, cur.y);
+		if (step(tmp, st))
 		{
-			dis[pn.x + 1][pn.y] = dis[pn.x][pn.y] + 1;
-			q.push(Pos(pn.x + 1, pn.y));
-		}
-		if (is_free(lS, matrix[pn.x][pn.y - 1]) && dis[pn.x][pn.y - 1] < 0)
-		{
-			dis[pn.x][pn.y - 1] = dis[pn.x][pn.y] + 1;
-			q.push(Pos(pn.x, pn.y - 1));
-		}
-		if (is_free(lS, matrix[pn.x][pn.y + 1]) && dis[pn.x][pn.y + 1] < 0)
-		{
-			dis[pn.x][pn.y + 1] = dis[pn.x][pn.y] + 1;
-			q.push(Pos(pn.x, pn.y + 1));
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
 		}
 	}
-	for (int i = 0; i < x; ++i)
+	void step2(Pos cur, char st)
 	{
-		delete[] dis[i];
+		Pos tmp = Pos(cur.x - 1, cur.y);
+		if (step(tmp, st))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
 	}
-	delete[] dis;
-	return -1;
-}
+	void step3(Pos cur, char st)
+	{
+		Pos tmp = Pos(cur.x, cur.y + 1);
+		if (step(tmp, st))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
+	}
+	void step4(Pos cur, char st)
+	{
+		Pos tmp = Pos(cur.x, cur.y - 1);
+		if (step(tmp, st))
+		{
+			q.push(tmp);
+			_disM[tmp.x][tmp.y][0] = _disM[cur.x][cur.y][0] + 1;
+		}
+	}
+	bool step(Pos newpos, char st)
+	{
+		char cell = _matrix[newpos.x][newpos.y];
+		if (st == 'K')
+		{
+			if (cell != '#' && _disM[newpos.x][newpos.y][0] == -1)
+			{
+				return true;
+			}
+			return false;
+		}
+		else
+		{
+			if ((cell == '.' || cell == 'K' || cell == 'E') && _disM[newpos.x][newpos.y][0] == -1)
+			{
+				return true;
+			}
+			return false;
+		}
+	}
+	Pos getcoord(const char c)
+	{
+		for (int i = 0; i < _N + 2; ++i)
+		{
+			for (int j = 0; j < _M + 2; ++j)
+			{
+				if (_matrix[i][j] == c)
+				{
+					return Pos(i, j);
+				}
+			}
+		}
+		return Pos();
+	}
+
+	queue<Pos> q;
+};
 
 
 int main(int argc, char* argv[])
@@ -123,24 +337,26 @@ int main(int argc, char* argv[])
 	int y = 0;
 	fin >> x;
 	fin >> y;
-	x += 2;
-	y += 2;
 
-	char matrix[1002][1002] = {};
-	readMatrix(x, y, matrix);
-	if (My_BFS(x, y, 'T', 'E', matrix) != -1)
+	MyBFS minotaur = MyBFS(x, y, 1);
+	minotaur.fReadGraph('E');
+
+	int way = minotaur.getlen('T', 'E');
+	if (way != -1)
 	{
-		fout << My_BFS(x, y, 'T', 'E', matrix);
+		fout << way;
 	}
 	else
 	{
 		fout << "No way ";
-		if (My_BFS(x, y, 'T', 'K', matrix) != -1)
+		way = minotaur.getlen('T', 'K');
+		if (way != -1)
 		{
-			fout << My_BFS(x, y, 'T', 'K', matrix) << " ";
-			if (My_BFS(x, y, 'K', 'E', matrix) != -1)
+			fout << way << " ";
+			way = minotaur.getlen('K', 'E');
+			if (way != -1)
 			{
-				fout << My_BFS(x, y, 'K', 'E', matrix);
+				fout << way;
 			}
 			else
 			{
